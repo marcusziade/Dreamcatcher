@@ -1,6 +1,6 @@
 import UIKit
 
-final class DreamsListVC: UIViewController {
+final class DreamsListVC: ViewController {
 
     enum Section: Hashable {
         case main
@@ -25,6 +25,8 @@ final class DreamsListVC: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        title = "Dreams"
+        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .close)
         configureTableView()
         configureDataSource()
         applyInitialSnapshot()
@@ -43,8 +45,11 @@ final class DreamsListVC: UIViewController {
             let cell = tableView.dequeueCell(UITableViewCell.self, forIndexPath: indexPath)
             var content = cell.defaultContentConfiguration()
             content.text = dream.title
+            content.textProperties.color = .white
             content.secondaryText = DateFormatter.localizedString(from: dream.date, dateStyle: .medium, timeStyle: .short)
+            content.secondaryTextProperties.color = .white
             cell.contentConfiguration = content
+            cell.backgroundColor = .clear
             return cell
         }
     }
@@ -53,7 +58,20 @@ final class DreamsListVC: UIViewController {
         let dreams = [
             Dream(title: "Flying over mountains", date: Date().addingTimeInterval(-86400)),
             Dream(title: "Underwater city", date: Date().addingTimeInterval(-172800)),
-            Dream(title: "Time travel adventure", date: Date().addingTimeInterval(-259200))
+            Dream(title: "Time travel adventure", date: Date().addingTimeInterval(-259200)),
+            Dream(title: "Flying over mountains", date: Date().addingTimeInterval(-86400)),
+            Dream(title: "Underwater city", date: Date().addingTimeInterval(-172800)),
+            Dream(title: "Time travel adventure", date: Date().addingTimeInterval(-259200)),
+            Dream(title: "Flying over mountains", date: Date().addingTimeInterval(-86400)),
+            Dream(title: "Underwater city", date: Date().addingTimeInterval(-172800)),
+            Dream(title: "Time travel adventure", date: Date().addingTimeInterval(-259200)),
+            Dream(title: "Flying over mountains", date: Date().addingTimeInterval(-86400)),
+            Dream(title: "Underwater city", date: Date().addingTimeInterval(-172800)),
+            Dream(title: "Time travel adventure", date: Date().addingTimeInterval(-259200)),
+            Dream(title: "Flying over mountains", date: Date().addingTimeInterval(-86400)),
+            Dream(title: "Underwater city", date: Date().addingTimeInterval(-172800)),
+            Dream(title: "Time travel adventure", date: Date().addingTimeInterval(-259200)),
+
         ]
         
         var snapshot = NSDiffableDataSourceSnapshot<Section, Dream>()
