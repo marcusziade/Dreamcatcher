@@ -9,9 +9,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: windowScene)
-        let viewModel = DreamGeneratorVM(networkService: NetworkService())
-        let viewController = DreamGeneratorVC(viewModel: viewModel)
-        window?.rootViewController = viewController
+        window?.rootViewController = MainVC(colors: [.black, .purple], settings: Settings())
         window?.makeKeyAndVisible()
     }
 }

@@ -15,6 +15,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				/Localized/LaunchScreen.storyboard,
+				"Extensions/UIView+Ext.swift",
 				Info.plist,
 			);
 			target = 2CC55CF32C5F1C7D0019854E /* Dreamcatcher */;
@@ -27,6 +28,7 @@
 			buildPhase = 2CC55CF22C5F1C7D0019854E /* Resources */;
 			membershipExceptions = (
 				Base.lproj/LaunchScreen.storyboard,
+				"Extensions/UIView+Ext.swift",
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
