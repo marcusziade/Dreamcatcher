@@ -22,44 +22,58 @@ final class RecordDreamVC: ViewController {
     private let gradientColors: [UIColor]
     private let settings: Settings
 
-    private var recordButton: UIButton = {
-        var config = UIButton.Configuration.filled()
-        config.title = "Record your dream"
-        config.baseForegroundColor = .white
-        config.baseBackgroundColor = .systemPurple
-        let button = UIButton(configuration: config)
-        button.layer.cornerRadius = 10
-        button.layer.masksToBounds = true
-        return button
-    }()
+    private let backgroundImageView = UIImageView(image: .dreamBackgroundImage)
+        .configure {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
 
-    private lazy var swipeUpButton: UIButton = {
-        var config = UIButton.Configuration.borderless()
-        config.title = "Swipe up to view your dreams"
-        config.baseForegroundColor = .white
-        let button = UIButton(configuration: config)
-        button.addAction(
-            UIAction { [unowned self] _ in
-                presentDreamsListVC()
-            },
-            for: .touchUpInside
-        )
-        return button
-    }()
+    private lazy var recordButton = UIButton.createCustomButton(
+        title: "Record your dream",
+        foregroundColor: .black,
+        backgroundColor: .white,
+        textStyle: .title1,
+        fontWeight: .semibold,
+        contentInset: .init(top: 16, leading: .zero, bottom: 16, trailing: .zero),
+        action: UIAction { [unowned self] _ in
+            print("Record button tapped!")
+        }
+    )
+
+    private lazy var swipeUpButton = UIButton.createCustomButton(
+        title: "Swipe up to view your dreams",
+        style: .borderless(),
+        foregroundColor: .white,
+        textStyle: .caption1,
+        action: UIAction { [unowned self] _ in
+            presentDreamsListVC()
+        }
+    )
 
     private func renderUI() {
+        view.addSubview(backgroundImageView)
+        let gradientOverlayView = GradientOverlayView()
+        view.addSubview(gradientOverlayView)
         let stackView = UIStackView(arrangedSubviews: [recordButton, swipeUpButton,])
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .vertical
-        stackView.spacing = 69
+        stackView.spacing = 32
         stackView.alignment = .center
         view.addSubview(stackView)
         NSLayoutConstraint.activate([
+            backgroundImageView.topAnchor.constraint(equalTo: view.topAnchor),
+            backgroundImageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backgroundImageView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backgroundImageView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            gradientOverlayView.topAnchor.constraint(equalTo: view.topAnchor),
+            gradientOverlayView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            gradientOverlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            gradientOverlayView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
             stackView.leadingAnchor.constraint(equalToSystemSpacingAfter: view.leadingAnchor, multiplier: 2),
             view.trailingAnchor.constraint(equalToSystemSpacingAfter: stackView.trailingAnchor, multiplier: 2),
-            view.safeAreaLayoutGuide.bottomAnchor.constraint(equalToSystemSpacingBelow: stackView.bottomAnchor, multiplier: 2),
+            view.safeAreaLayoutGuide.bottomAnchor.constraint(equalToSystemSpacingBelow: stackView.bottomAnchor, multiplier: 8),
 
-            recordButton.heightAnchor.constraint(equalToConstant: 60),
             recordButton.widthAnchor.constraint(equalTo: stackView.widthAnchor),
         ])
     }

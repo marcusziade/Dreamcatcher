@@ -22,8 +22,9 @@ final class DreamsListVC: ViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        renderBackgroundGradient(withColors: [.black, .purple])
         title = "Dreams"
-        navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .close)
+        navigationItem.rightBarButtonItem = closeButton
         view.addSubview(tableView)
         applyInitialSnapshot()
     }
@@ -48,6 +49,13 @@ final class DreamsListVC: ViewController {
         cell.backgroundColor = .clear
         return cell
     }
+
+    private lazy var closeButton = UIBarButtonItem(
+        systemItem: .close,
+        primaryAction: UIAction { [unowned self] _ in
+            dismiss(animated: true)
+        }
+    )
 
     private lazy var tableView = UITableView(frame: view.bounds, style: .plain)
         .configure {
