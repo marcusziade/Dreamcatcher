@@ -11,6 +11,10 @@ final class RecordDreamVC: ViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         renderUI()
+
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
+        panGesture.delegate = self
+        view.addGestureRecognizer(panGesture)
     }
 
     // MARK: Private
@@ -36,8 +40,7 @@ final class RecordDreamVC: ViewController {
         let button = UIButton(configuration: config)
         button.addAction(
             UIAction { [unowned self] _ in
-                let nc = NavigationController(root: DreamsListVC())
-                present(nc, animated: true)
+                presentDreamsListVC()
             },
             for: .touchUpInside
         )
@@ -59,6 +62,31 @@ final class RecordDreamVC: ViewController {
             recordButton.heightAnchor.constraint(equalToConstant: 60),
             recordButton.widthAnchor.constraint(equalTo: stackView.widthAnchor),
         ])
+    }
+
+    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        guard gesture.state == .began else { return }
+        let velocity = gesture.velocity(in: view)
+        if velocity.y < 0 && abs(velocity.y) > abs(velocity.x) {
+            presentDreamsListVC()
+        }
+    }
+
+    private func presentDreamsListVC() {
+        let nc = NavigationController(root: DreamsListVC())
+        present(nc, animated: true)
+    }
+}
+
+extension RecordDreamVC: UIGestureRecognizerDelegate {
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if let panGesture = gestureRecognizer as? UIPanGestureRecognizer {
+            let velocity = panGesture.velocity(in: view)
+            // Check if it's primarily an upward swipe
+            return velocity.y < 0 && abs(velocity.y) > abs(velocity.x)
+        }
+        return false
     }
 }
 
