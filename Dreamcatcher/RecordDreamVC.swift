@@ -75,7 +75,7 @@ final class RecordDreamVC: ViewController {
             toolbar.setItems(buttons, animated: true)
             $0.inputAccessoryView = toolbar
 
-            $0.autocorrectionType = .no
+            $0.autocorrectionType = .yes
             $0.returnKeyType = .default
             $0.enablesReturnKeyAutomatically = true
 
