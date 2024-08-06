@@ -23,6 +23,8 @@ final class RecordDreamVC: ViewController {
     private let settings: Settings
     static private let transitionSpeed: CGFloat = 0.2
 
+    static private let instruction = "Describe your dream"
+
     private let backgroundImageView = UIImageView(image: .dreamBackgroundImage)
         .configure {
             $0.translatesAutoresizingMaskIntoConstraints = false
@@ -48,14 +50,23 @@ final class RecordDreamVC: ViewController {
             $0.clipsToBounds = true
 
             $0.translatesAutoresizingMaskIntoConstraints = false
-            $0.delegate = self
 
             let toolbar = UIToolbar()
             toolbar.sizeToFit()
+
+            let instructionLabel = UILabel()
+            instructionLabel.text = Self.instruction
+            instructionLabel.numberOfLines = 0
+            instructionLabel.textAlignment = .center
+            instructionLabel.font = UIFont.preferredFont(forTextStyle: .headline)
+            instructionLabel.sizeToFit()
+
             let buttons: [UIBarButtonItem] = [
                 .init(systemItem: .redo, primaryAction: UIAction { [unowned self] _ in
                     clearTextView()
                 }),
+                .init(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+                .init(customView: instructionLabel),
                 .init(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
                 .init(systemItem: .done, primaryAction: UIAction { [unowned self] _ in
                     endEditing()
@@ -75,8 +86,6 @@ final class RecordDreamVC: ViewController {
                 .font: $0.font!,
                 .foregroundColor: textColor
             ]
-
-            setupTextViewContent($0)
         }
 
     private func clearTextView() {
@@ -88,7 +97,7 @@ final class RecordDreamVC: ViewController {
 
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         let confirmAction = UIAlertAction(title: "Clear", style: .destructive) { [unowned self] _ in
-            setupTextViewContent(dreamTextView)
+            dreamTextView.text = nil
         }
         alert.addAction(cancelAction)
         alert.addAction(confirmAction)
@@ -195,68 +204,6 @@ extension RecordDreamVC: UIGestureRecognizerDelegate {
             return velocity.y < 0 && abs(velocity.y) > abs(velocity.x)
         }
         return false
-    }
-}
-
-extension RecordDreamVC: UITextViewDelegate {
-
-    func textView(
-        _ textView: UITextView,
-        shouldChangeTextIn range: NSRange,
-        replacementText text: String
-    ) -> Bool {
-        guard let attributedText = textView.attributedText else { return true }
-
-        let proposedText = (attributedText.string as NSString).replacingCharacters(
-            in: range,
-            with: text
-        )
-        let instructions = [
-            "Describe the setting:",
-            "Describe the main character:",
-            "Describe the plot:",
-            "Describe the ending:"
-        ]
-
-        // Check if the proposed change would modify any instruction
-        for instruction in instructions {
-            if !proposedText.contains(instruction) {
-                return false
-            }
-        }
-
-        return true
-    }
-
-    private func setupTextViewContent(_ textView: UITextView) {
-        let attributedString = NSMutableAttributedString()
-
-        let instructions = [
-            "Describe the setting:\n",
-            "Describe the main character:\n",
-            "Describe the plot:\n",
-            "Describe the ending:\n"
-        ]
-
-        for (index, instruction) in instructions.enumerated() {
-            let instructionAttributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.boldSystemFont(ofSize: 16),
-                .foregroundColor: UIColor.gray
-            ]
-            attributedString.append(NSAttributedString(string: instruction, attributes: instructionAttributes))
-
-            // Add editable placeholder if it's not the last instruction
-            if index < instructions.count - 1 {
-                attributedString.append(
-                    NSAttributedString(
-                        string: "\n\n",
-                        attributes: [.font: UIFont.systemFont(ofSize: 16)]
-                    )
-                )
-            }
-        }
-
-        textView.attributedText = attributedString
     }
 }
 
