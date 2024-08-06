@@ -1,16 +1,18 @@
 import UIKit
+import Combine
 
 final class RecordDreamVC: ViewController {
 
-    init(colors: [UIColor], settings: Settings) {
-        self.gradientColors = colors
-        self.settings = settings
+    init(model: RecordDreamVM) {
+        self.viewModel = model
         super.init()
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         renderUI()
+        setupBindings()
+        setupAccessibility()
 
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
         panGesture.delegate = self
@@ -19,15 +21,18 @@ final class RecordDreamVC: ViewController {
 
     // MARK: Private
 
-    private let gradientColors: [UIColor]
-    private let settings: Settings
-    static private let transitionSpeed: CGFloat = 0.2
+    private let viewModel: RecordDreamVM
+    private var cancellables = Set<AnyCancellable>()
 
+    static private let transitionSpeed: CGFloat = 0.2
     static private let instruction = "Describe your dream"
 
     private let backgroundImageView = UIImageView(image: .dreamBackgroundImage)
         .configure {
             $0.translatesAutoresizingMaskIntoConstraints = false
+            $0.accessibilityLabel = "Dream background"
+            $0.isAccessibilityElement = true
+            $0.accessibilityTraits = .image
         }
 
     private lazy var dreamTextView = UITextView()
@@ -51,29 +56,7 @@ final class RecordDreamVC: ViewController {
 
             $0.translatesAutoresizingMaskIntoConstraints = false
 
-            let toolbar = UIToolbar()
-            toolbar.sizeToFit()
-
-            let instructionLabel = UILabel()
-            instructionLabel.text = Self.instruction
-            instructionLabel.numberOfLines = 0
-            instructionLabel.textAlignment = .center
-            instructionLabel.font = UIFont.preferredFont(forTextStyle: .headline)
-            instructionLabel.sizeToFit()
-
-            let buttons: [UIBarButtonItem] = [
-                .init(systemItem: .redo, primaryAction: UIAction { [unowned self] _ in
-                    clearTextView()
-                }),
-                .init(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-                .init(customView: instructionLabel),
-                .init(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-                .init(systemItem: .done, primaryAction: UIAction { [unowned self] _ in
-                    endEditing()
-                })
-            ]
-            toolbar.setItems(buttons, animated: true)
-            $0.inputAccessoryView = toolbar
+            $0.inputAccessoryView = createToolBarView()
 
             $0.autocorrectionType = .yes
             $0.returnKeyType = .default
@@ -86,6 +69,9 @@ final class RecordDreamVC: ViewController {
                 .font: $0.font!,
                 .foregroundColor: textColor
             ]
+
+            $0.accessibilityLabel = "Dream description"
+            $0.accessibilityHint = "Enter your dream description here"
         }
 
     private func clearTextView() {
@@ -97,7 +83,7 @@ final class RecordDreamVC: ViewController {
 
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         let confirmAction = UIAlertAction(title: "Clear", style: .destructive) { [unowned self] _ in
-            dreamTextView.text = nil
+            viewModel.clearText()
         }
         alert.addAction(cancelAction)
         alert.addAction(confirmAction)
@@ -111,15 +97,11 @@ final class RecordDreamVC: ViewController {
         textStyle: .title1,
         fontWeight: .semibold,
         contentInset: .init(top: 16, leading: .zero, bottom: 16, trailing: .zero),
+        accessibilityLabel: "Record your dream",
+        accessibilityHint: "Double tap to start recording your dream",
         action: UIAction { [unowned self] _ in
             UIImpactFeedbackGenerator(style: .soft, view: view).impactOccurred()
-            Task { @MainActor in
-                UIView.animate(withDuration: Self.transitionSpeed) {
-                    self.dreamTextView.alpha = 1
-                } completion: { _ in
-                    self.dreamTextView.becomeFirstResponder()
-                }
-            }
+            viewModel.showTextView()
         }
     )
 
@@ -128,6 +110,8 @@ final class RecordDreamVC: ViewController {
         style: .borderless(),
         foregroundColor: .white,
         textStyle: .caption1,
+        accessibilityLabel: "View your dreams",
+        accessibilityHint: "Double tap to view your recorded dreams",
         action: UIAction { [unowned self] _ in
             if !dreamTextView.isFirstResponder {
                 presentDreamsListVC()
@@ -170,6 +154,85 @@ final class RecordDreamVC: ViewController {
         ])
     }
 
+    private func createToolBarView() -> UIView {
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+
+        let instructionLabel = UILabel()
+        instructionLabel.text = Self.instruction
+        instructionLabel.numberOfLines = 0
+        instructionLabel.textAlignment = .center
+        instructionLabel.font = UIFont.preferredFont(forTextStyle: .headline)
+        instructionLabel.sizeToFit()
+        instructionLabel.accessibilityLabel = "Instruction"
+        instructionLabel.accessibilityTraits = .header
+
+        let buttons: [UIBarButtonItem] = [
+            .init(systemItem: .redo, primaryAction: UIAction { [unowned self] _ in
+                clearTextView()
+            }),
+            .init(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            .init(customView: instructionLabel),
+            .init(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            .init(systemItem: .done, primaryAction: UIAction { [unowned self] _ in
+                endEditing()
+            })
+        ]
+        toolbar.setItems(buttons, animated: true)
+
+        return toolbar
+    }
+
+    private func setupBindings() {
+        viewModel.isTextViewVisible
+            .receive(on: DispatchQueue.main)
+            .sink { [unowned self] isVisible in
+                updateTextViewVisibility(isVisible: isVisible)
+            }
+            .store(in: &cancellables)
+
+        viewModel.dreamText
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.text, on: dreamTextView)
+            .store(in: &cancellables)
+
+        NotificationCenter.default
+            .publisher(
+                for: UITextView.textDidChangeNotification,
+                object: dreamTextView
+            )
+            .compactMap { ($0.object as? UITextView)?.text }
+            .assign(to: \.value, on: viewModel.dreamText)
+            .store(in: &cancellables)
+    }
+
+    private func setupAccessibility() {
+        recordButton.accessibilityLabel = "Record your dream"
+        recordButton.accessibilityHint = "Double tap to start recording your dream"
+        recordButton.accessibilityTraits = .button
+
+        swipeUpButton.accessibilityLabel = "View your dreams"
+        swipeUpButton.accessibilityHint = "Double tap to view your recorded dreams"
+        swipeUpButton.accessibilityTraits = .button
+
+        view.accessibilityElements = [recordButton, swipeUpButton, dreamTextView]
+    }
+
+    private func updateTextViewVisibility(isVisible: Bool) {
+        Task { @MainActor in
+            UIView.animate(withDuration: Self.transitionSpeed) {
+                self.dreamTextView.alpha = isVisible ? 1 : 0
+            } completion: { _ in
+                if isVisible {
+                    self.dreamTextView.becomeFirstResponder()
+                    UIAccessibility.post(notification: .screenChanged, argument: self.dreamTextView)
+                } else {
+                    UIAccessibility.post(notification: .screenChanged, argument: self.recordButton)
+                }
+            }
+        }
+    }
+
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard gesture.state == .began else { return }
         let velocity = gesture.velocity(in: view)
@@ -182,12 +245,7 @@ final class RecordDreamVC: ViewController {
 
     private func endEditing() {
         view.endEditing(true)
-
-        Task { @MainActor in
-            UIView.animate(withDuration: Self.transitionSpeed) { [self] in
-                dreamTextView.alpha = .zero
-            }
-        }
+        viewModel.hideTextView()
     }
 
     private func presentDreamsListVC() {
@@ -209,5 +267,5 @@ extension RecordDreamVC: UIGestureRecognizerDelegate {
 }
 
 #Preview {
-    RecordDreamVC(colors: [.black, .purple], settings: .init())
+    RecordDreamVC(model: .init(settings: .init()))
 }

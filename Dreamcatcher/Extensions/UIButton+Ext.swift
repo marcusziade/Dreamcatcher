@@ -10,9 +10,11 @@ extension UIButton {
     ///   - backgroundColor: The background color of the button. Default is `.systemPurple`.
     ///   - textStyle: The text style for dynamic type. Default is `.headline`.
     ///   - fontWeight: The weight of the font. Default is `.regular`.
-    ///   - cornerRadius: The corner radius of the button. If nil, corners won't be rounded. Default is `nil`.
+    ///   - contentInset: The content insets for the button. Default is `.zero`.
+    ///   - accessibilityLabel: The accessibility label for the button. If nil, the title will be used.
+    ///   - accessibilityHint: The accessibility hint for the button. Default is nil.
     ///   - action: An optional UIAction to be performed when the button is tapped. Default is `nil`.
-    /// - Returns: A configured UIButton instance with the specified parameters and action.
+    /// - Returns: A configured UIButton instance with the specified parameters, accessibility support, and action.
     static func createCustomButton(
         title: String,
         style: UIButton.Configuration = UIButton.Configuration.filled(),
@@ -21,6 +23,8 @@ extension UIButton {
         textStyle: UIFont.TextStyle = .headline,
         fontWeight: UIFont.Weight = .regular,
         contentInset: NSDirectionalEdgeInsets = .zero,
+        accessibilityLabel: String? = nil,
+        accessibilityHint: String? = nil,
         action: UIAction? = nil
     ) -> UIButton {
         var config = style
@@ -39,6 +43,11 @@ extension UIButton {
 
         let button = UIButton(configuration: config)
         button.titleLabel?.adjustsFontForContentSizeCategory = true
+
+        // Set accessibility properties
+        button.accessibilityLabel = accessibilityLabel ?? title
+        button.accessibilityHint = accessibilityHint
+        button.accessibilityTraits = .button
 
         if let action {
             button.addAction(action, for: .touchUpInside)
