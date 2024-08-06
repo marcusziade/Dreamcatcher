@@ -19,41 +19,43 @@ final class DreamsListVC: ViewController {
             return lhs.id == rhs.id
         }
     }
-    
-    private var tableView: UITableView!
-    private var dataSource: UITableViewDiffableDataSource<Section, Dream>!
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Dreams"
         navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .close)
-        configureTableView()
-        configureDataSource()
+        view.addSubview(tableView)
         applyInitialSnapshot()
     }
-    
-    private func configureTableView() {
-        tableView = UITableView(frame: view.bounds, style: .plain)
-        tableView.backgroundColor = .clear
-        tableView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.addSubview(tableView)
-        tableView.registerCell(UITableViewCell.self)
+
+    // MARK: Private
+
+    private lazy var dataSource: UITableViewDiffableDataSource<
+        Section,
+        Dream
+    > = .init(tableView: tableView) { tableView, indexPath, dream in
+        let cell = tableView.dequeueCell(UITableViewCell.self, forIndexPath: indexPath)
+        var content = cell.defaultContentConfiguration()
+        content.text = dream.title
+        content.textProperties.color = .white
+        content.secondaryText = DateFormatter.localizedString(
+            from: dream.date,
+            dateStyle: .medium,
+            timeStyle: .short
+        )
+        content.secondaryTextProperties.color = .white
+        cell.contentConfiguration = content
+        cell.backgroundColor = .clear
+        return cell
     }
-    
-    private func configureDataSource() {
-        dataSource = UITableViewDiffableDataSource<Section, Dream>(tableView: tableView) { (tableView, indexPath, dream) -> UITableViewCell? in
-            let cell = tableView.dequeueCell(UITableViewCell.self, forIndexPath: indexPath)
-            var content = cell.defaultContentConfiguration()
-            content.text = dream.title
-            content.textProperties.color = .white
-            content.secondaryText = DateFormatter.localizedString(from: dream.date, dateStyle: .medium, timeStyle: .short)
-            content.secondaryTextProperties.color = .white
-            cell.contentConfiguration = content
-            cell.backgroundColor = .clear
-            return cell
+
+    private lazy var tableView = UITableView(frame: view.bounds, style: .plain)
+        .configure {
+            $0.backgroundColor = .clear
+            $0.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            $0.registerCell(UITableViewCell.self)
         }
-    }
-    
+
     private func applyInitialSnapshot() {
         let dreams = [
             Dream(title: "Flying over mountains", date: Date().addingTimeInterval(-86400)),
