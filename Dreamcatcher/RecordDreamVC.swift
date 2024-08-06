@@ -112,6 +112,7 @@ final class RecordDreamVC: ViewController {
         fontWeight: .semibold,
         contentInset: .init(top: 16, leading: .zero, bottom: 16, trailing: .zero),
         action: UIAction { [unowned self] _ in
+            UIImpactFeedbackGenerator(style: .soft, view: view).impactOccurred()
             Task { @MainActor in
                 UIView.animate(withDuration: Self.transitionSpeed) {
                     self.dreamTextView.alpha = 1
