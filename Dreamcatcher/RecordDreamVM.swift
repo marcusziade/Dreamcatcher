@@ -3,13 +3,27 @@ import UIKit
 
 final class RecordDreamVM {
 
+    enum State {
+        case idle, editing, readyToSubmit, analyzing, result, error
+
+        var editButtonTitle: String {
+            switch self {
+            case .idle: "Record your dream"
+            case .readyToSubmit: "Edit dream"
+            case .analyzing: "Analyzing dream"
+            default: " "
+            }
+        }
+    }
+
     let dreamText = CurrentValueSubject<String, Never>("")
-    let isTextViewVisible = CurrentValueSubject<Bool, Never>(false)
-    let saveDreamTrigger = PassthroughSubject<Void, Never>()
+    let state = CurrentValueSubject<State, Never>(.idle)
+
+    let onSubmitTapped = PassthroughSubject<Void, Never>()
+    let onEditButtonTapped = PassthroughSubject<Void, Never>()
+    let onDoneEditing = PassthroughSubject<Void, Never>()
 
     let settings: Settings
-
-    private var cancellables = Set<AnyCancellable>()
 
     init(settings: Settings) {
         self.settings = settings
@@ -17,36 +31,39 @@ final class RecordDreamVM {
         setupBindings()
     }
 
+    // MARK: Private
+
+    private var cancellables = Set<AnyCancellable>()
+
     private func setupBindings() {
-        dreamText
-            .dropFirst()
-            .debounce(for: .seconds(0.5), scheduler: DispatchQueue.main)
-            .sink { [unowned self] _ in
-                saveDreamTrigger.send()
+        onDoneEditing.sink { [unowned self] _ in
+            if dreamText.value.isEmpty {
+                state.send(.idle)
+            } else {
+                state.send(.readyToSubmit)
             }
-            .store(in: &cancellables)
+        }
+        .store(in: &cancellables)
 
-        saveDreamTrigger
-            .sink { [unowned self] in
-                saveDream()
+        onSubmitTapped.sink { [unowned self] _ in
+            state.send(.analyzing)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [self] in
+                state.send(Bool.random() ? .result : .error)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [self] in
+                    clearText()
+                    state.send(.idle)
+                }
             }
-            .store(in: &cancellables)
-    }
+        }
+        .store(in: &cancellables)
 
-    func showTextView() {
-        isTextViewVisible.send(true)
-    }
-
-    func hideTextView() {
-        isTextViewVisible.send(false)
+        onEditButtonTapped.sink { [unowned self] _ in
+            state.send(.editing)
+        }
+        .store(in: &cancellables)
     }
 
     func clearText() {
         dreamText.send("")
-    }
-
-    private func saveDream() {
-        // Implement dream saving logic here
-        print("Saving dream: \(dreamText.value)")
     }
 }

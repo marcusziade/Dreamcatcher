@@ -12,7 +12,7 @@ final class RecordDreamVC: ViewController {
         super.viewDidLoad()
         renderUI()
         setupBindings()
-        setupAccessibility()
+        setAccessibility()
 
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
         panGesture.delegate = self
@@ -30,7 +30,7 @@ final class RecordDreamVC: ViewController {
     private let backgroundImageView = UIImageView(image: .dreamBackgroundImage)
         .configure {
             $0.translatesAutoresizingMaskIntoConstraints = false
-            $0.accessibilityLabel = "Dream background"
+            $0.accessibilityLabel = "App background image view"
             $0.isAccessibilityElement = true
             $0.accessibilityTraits = .image
         }
@@ -90,18 +90,34 @@ final class RecordDreamVC: ViewController {
         present(alert, animated: true)
     }
 
-    private lazy var recordButton = UIButton.createCustomButton(
-        title: "Record your dream",
+    private lazy var submitButton = UIButton.createCustomButton(
+        title: "Submit dream",
+        textStyle: .title1,
+        fontWeight: .semibold,
+        contentInset: .init(top: 16, leading: .zero, bottom: 16, trailing: .zero),
+        accessibilityLabel: "Submit dream",
+        accessibilityHint: "Tap to submit the dream for analyzis",
+        action: UIAction { [unowned self] _ in
+            UIImpactFeedbackGenerator(style: .soft, view: view).impactOccurred()
+            viewModel.onSubmitTapped.send()
+            // start ml processing
+        }
+    ).configure {
+        $0.isHidden = true
+    }
+
+    private lazy var editButton = UIButton.createCustomButton(
+        title: viewModel.state.value.editButtonTitle,
         foregroundColor: .black,
         backgroundColor: .white,
         textStyle: .title1,
         fontWeight: .semibold,
         contentInset: .init(top: 16, leading: .zero, bottom: 16, trailing: .zero),
-        accessibilityLabel: "Record your dream",
-        accessibilityHint: "Double tap to start recording your dream",
+        accessibilityLabel: viewModel.state.value.editButtonTitle,
+        accessibilityHint: "Tap to start recording your dream",
         action: UIAction { [unowned self] _ in
             UIImpactFeedbackGenerator(style: .soft, view: view).impactOccurred()
-            viewModel.showTextView()
+            viewModel.onEditButtonTapped.send()
         }
     )
 
@@ -112,8 +128,9 @@ final class RecordDreamVC: ViewController {
         textStyle: .caption1,
         accessibilityLabel: "View your dreams",
         accessibilityHint: "Double tap to view your recorded dreams",
+        animateOnPress: false,
         action: UIAction { [unowned self] _ in
-            if !dreamTextView.isFirstResponder {
+            if viewModel.state.value != .editing {
                 presentDreamsListVC()
             }
         }
@@ -123,12 +140,15 @@ final class RecordDreamVC: ViewController {
         view.addSubview(backgroundImageView)
         let gradientOverlayView = GradientOverlayView()
         view.addSubview(gradientOverlayView)
-        let stackView = UIStackView(arrangedSubviews: [recordButton, swipeUpButton,])
+
+        let stackView = UIStackView(arrangedSubviews: [submitButton, editButton, swipeUpButton,])
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .vertical
         stackView.spacing = 32
+        stackView.setCustomSpacing(8, after: submitButton)
         stackView.alignment = .center
         view.addSubview(stackView)
+
         view.addSubview(dreamTextView)
         NSLayoutConstraint.activate([
             backgroundImageView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -145,12 +165,13 @@ final class RecordDreamVC: ViewController {
             view.trailingAnchor.constraint(equalToSystemSpacingAfter: stackView.trailingAnchor, multiplier: 2),
             view.safeAreaLayoutGuide.bottomAnchor.constraint(equalToSystemSpacingBelow: stackView.bottomAnchor, multiplier: 8),
 
-            recordButton.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+            submitButton.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+            editButton.widthAnchor.constraint(equalTo: stackView.widthAnchor),
 
             dreamTextView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             dreamTextView.leadingAnchor.constraint(equalTo: stackView.leadingAnchor),
             dreamTextView.trailingAnchor.constraint(equalTo: stackView.trailingAnchor),
-            dreamTextView.bottomAnchor.constraint(equalTo: recordButton.bottomAnchor),
+            dreamTextView.bottomAnchor.constraint(equalTo: editButton.bottomAnchor),
         ])
     }
 
@@ -175,7 +196,8 @@ final class RecordDreamVC: ViewController {
             .init(customView: instructionLabel),
             .init(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
             .init(systemItem: .done, primaryAction: UIAction { [unowned self] _ in
-                endEditing()
+                view.endEditing(true)
+                viewModel.onDoneEditing.send()
             })
         ]
         toolbar.setItems(buttons, animated: true)
@@ -184,16 +206,12 @@ final class RecordDreamVC: ViewController {
     }
 
     private func setupBindings() {
-        viewModel.isTextViewVisible
+        viewModel.state
             .receive(on: DispatchQueue.main)
-            .sink { [unowned self] isVisible in
-                updateTextViewVisibility(isVisible: isVisible)
+            .sink { [unowned self] state in
+                updateButtons(forState: state)
+                updateTextViewVisibility(forState: state)
             }
-            .store(in: &cancellables)
-
-        viewModel.dreamText
-            .receive(on: DispatchQueue.main)
-            .assign(to: \.text, on: dreamTextView)
             .store(in: &cancellables)
 
         NotificationCenter.default
@@ -204,30 +222,24 @@ final class RecordDreamVC: ViewController {
             .compactMap { ($0.object as? UITextView)?.text }
             .assign(to: \.value, on: viewModel.dreamText)
             .store(in: &cancellables)
+
+        viewModel.dreamText
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.text, on: dreamTextView)
+            .store(in: &cancellables)
     }
 
-    private func setupAccessibility() {
-        recordButton.accessibilityLabel = "Record your dream"
-        recordButton.accessibilityHint = "Double tap to start recording your dream"
-        recordButton.accessibilityTraits = .button
-
-        swipeUpButton.accessibilityLabel = "View your dreams"
-        swipeUpButton.accessibilityHint = "Double tap to view your recorded dreams"
-        swipeUpButton.accessibilityTraits = .button
-
-        view.accessibilityElements = [recordButton, swipeUpButton, dreamTextView]
-    }
-
-    private func updateTextViewVisibility(isVisible: Bool) {
+    private func updateTextViewVisibility(forState state: RecordDreamVM.State) {
         Task { @MainActor in
             UIView.animate(withDuration: Self.transitionSpeed) {
-                self.dreamTextView.alpha = isVisible ? 1 : 0
+                self.dreamTextView.alpha = state == .editing ? 1 : 0
             } completion: { _ in
-                if isVisible {
+                if state == .editing {
                     self.dreamTextView.becomeFirstResponder()
                     UIAccessibility.post(notification: .screenChanged, argument: self.dreamTextView)
                 } else {
-                    UIAccessibility.post(notification: .screenChanged, argument: self.recordButton)
+                    self.dreamTextView.resignFirstResponder()
+                    UIAccessibility.post(notification: .screenChanged, argument: self.editButton)
                 }
             }
         }
@@ -237,20 +249,39 @@ final class RecordDreamVC: ViewController {
         guard gesture.state == .began else { return }
         let velocity = gesture.velocity(in: view)
         if velocity.y < 0 && abs(velocity.y) > abs(velocity.x) {
-            if !dreamTextView.isFirstResponder {
+            if viewModel.state.value != .editing {
                 presentDreamsListVC()
             }
         }
     }
 
-    private func endEditing() {
-        view.endEditing(true)
-        viewModel.hideTextView()
-    }
-
     private func presentDreamsListVC() {
         let nc = NavigationController(root: DreamsListVC())
         present(nc, animated: true)
+    }
+
+    private func updateButtons(forState state: RecordDreamVM.State) {
+        submitButton.isHidden = state != .readyToSubmit
+        editButton.isHidden = [.result, .error].contains(state)
+        editButton.configuration?.title = state.editButtonTitle
+        editButton.isUserInteractionEnabled = state != .analyzing
+        setAccessibility()
+    }
+
+    private func setAccessibility() {
+        submitButton.accessibilityLabel = "Submit dream"
+        submitButton.accessibilityHint = "Tap to submit the dream for analyzis"
+        submitButton.accessibilityTraits = .button
+
+        editButton.accessibilityLabel = viewModel.state.value.editButtonTitle
+        editButton.accessibilityHint = viewModel.state.value.editButtonTitle
+        editButton.accessibilityTraits = .button
+
+        swipeUpButton.accessibilityLabel = "View your dreams"
+        swipeUpButton.accessibilityHint = "Double tap to view your recorded dreams"
+        swipeUpButton.accessibilityTraits = .button
+
+        view.accessibilityElements = [submitButton, editButton, swipeUpButton, dreamTextView]
     }
 }
 
