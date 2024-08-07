@@ -9,7 +9,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: windowScene)
-        let vm = RecordDreamVM(settings: .init())
+        let vm = RecordDreamVM(networkService: NetworkService(), settings: .init())
         window?.rootViewController = RecordDreamVC(model: vm)
         window?.makeKeyAndVisible()
     }

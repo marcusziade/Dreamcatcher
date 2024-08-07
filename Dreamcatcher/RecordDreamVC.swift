@@ -27,6 +27,8 @@ final class RecordDreamVC: ViewController {
     static private let transitionSpeed: CGFloat = 0.2
     static private let instruction = "Describe your dream"
 
+    private let dreamImageTagView = DreamImageTagView()
+
     private let backgroundImageView = UIImageView(image: .dreamBackgroundImage)
         .configure {
             $0.translatesAutoresizingMaskIntoConstraints = false
@@ -141,7 +143,14 @@ final class RecordDreamVC: ViewController {
         let gradientOverlayView = GradientOverlayView()
         view.addSubview(gradientOverlayView)
 
-        let stackView = UIStackView(arrangedSubviews: [submitButton, editButton, swipeUpButton,])
+        let stackView = UIStackView(
+            arrangedSubviews: [
+                dreamImageTagView,
+                submitButton,
+                editButton,
+                swipeUpButton,
+            ]
+        )
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .vertical
         stackView.spacing = 32
@@ -172,6 +181,10 @@ final class RecordDreamVC: ViewController {
             dreamTextView.leadingAnchor.constraint(equalTo: stackView.leadingAnchor),
             dreamTextView.trailingAnchor.constraint(equalTo: stackView.trailingAnchor),
             dreamTextView.bottomAnchor.constraint(equalTo: editButton.bottomAnchor),
+
+            dreamImageTagView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            dreamImageTagView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            dreamImageTagView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
     }
 
@@ -227,6 +240,18 @@ final class RecordDreamVC: ViewController {
             .receive(on: DispatchQueue.main)
             .assign(to: \.text, on: dreamTextView)
             .store(in: &cancellables)
+
+        viewModel.tags.receive(on: DispatchQueue.main).sink { [unowned self] tags in
+            dreamImageTagView.setTags(tags)
+        }
+        .store(in: &cancellables)
+
+        viewModel.images
+            .receive(on: DispatchQueue.main)
+            .sink { [unowned self] images in
+                dreamImageTagView.setImages(images)
+            }
+            .store(in: &cancellables)
     }
 
     private func updateTextViewVisibility(forState state: RecordDreamVM.State) {
@@ -262,7 +287,7 @@ final class RecordDreamVC: ViewController {
 
     private func updateButtons(forState state: RecordDreamVM.State) {
         submitButton.isHidden = state != .readyToSubmit
-        editButton.isHidden = [.result, .error].contains(state)
+        editButton.isHidden = state == .result
         editButton.configuration?.title = state.editButtonTitle
         editButton.isUserInteractionEnabled = state != .analyzing
         setAccessibility()
@@ -298,5 +323,5 @@ extension RecordDreamVC: UIGestureRecognizerDelegate {
 }
 
 #Preview {
-    RecordDreamVC(model: .init(settings: .init()))
+    RecordDreamVC(model: .init(networkService: NetworkService(), settings: .init()))
 }
